@@ -1,0 +1,26 @@
+function DidPixelsShift(Area: Tbox; WaitInterval: Integer = 500; MaxWaitTime: Integer = 10000; MinPixelShift: Integer = 0): boolean;
+var
+  Stopwatch: TTimeMarker;
+  Before, After: Integer;
+  i, t: integer;
+begin
+  Before := BitmapFromClient(Area);
+  i := 0;
+
+  t := GetTickCount;
+  repeat
+    wait(WaitInterval);
+    After := BitmapFromClient(Area);
+
+    if (CalculatePixelShift(Before, After, [0, 0, Area.x2 - Area.X1, Area.y2 - Area.y1]) > MinPixelShift) then
+    begin
+      FreeBitmap(Before);
+      FreeBitmap(After);
+      exit(true);
+    end else
+      writeln('zero/not enough pixels have shifted');
+    FreeBitmap(After);
+  until (GetTickCount - t) > MaxWaitTime;
+
+  FreeBitmap(Before);
+end;

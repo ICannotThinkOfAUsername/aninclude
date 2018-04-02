@@ -1,0 +1,8 @@
+function StrContains(str, s: string): Boolean; //should probably be String.Contains() and work off self?
+begin
+  if ((str <> '') and (s <> '')) then
+    Result := (Pos(s, str) > 0)
+  else
+    Result := False;
+end;
+

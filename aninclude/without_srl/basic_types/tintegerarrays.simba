@@ -1,0 +1,4 @@
+procedure TIntegerArray.Empty();
+begin
+  delete(self, 0, length(self));
+end;

@@ -1,0 +1,9 @@
+procedure GeSetup();
+begin
+  GrandExchange.__Setup();
+
+  if p2p then
+    MaxSlots := 8
+  else
+    MaxSlots := 3;
+end;

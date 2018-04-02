@@ -1,0 +1,70 @@
+//Returns true if congratulatory level up message is in chatbox.
+function TRSChatbox.LeveledUp(): Boolean;
+const
+  C_CHAR_POS: TPoint = [107, 383];
+  TEXT_COL = 8388608;
+var
+  p: TPoint;
+begin
+  if (srl.FindText(p, 'Congratulations', 'CharsNPC07', TEXT_COL, 0, Self.FBounds)) then
+    exit(true);
+end;
+
+//Tells you which skill has leveled up in the chatbox, fletching would return 'Fletching'
+function TRSChatbox.WhichSkillAdvanced(): string;
+const
+  TEXT_COL = 8388608;
+  TEXT_TOL = 25;
+begin
+  result := Between('advanced a ', ' level', GetTextAtEx(Chatbox.GetBounds(), 0, 3, 3, TEXT_COL, TEXT_TOL, 'CharsNPC07'));
+end;
+
+//WaitFunc that also checks for levelup
+function TSRL.WaitFuncChatbox(XMaxTime1: integer = 5400; XMaxTime2: integer = 6600; XWaitPerLoop1: integer = 200; XWaitPerLoop2: integer = 350; Func: function: Boolean): Boolean;
+var
+  WaitPerLoop, MaxTime: integer;
+  t: UInt64;
+begin
+  WaitPerLoop := srl.NormalRange(XWaitPerLoop1, XWaitPerLoop2);
+  MaxTime := srl.NormalRange(XMaxTime1, XMaxTime2);
+
+  t := GetTickCount64() + MaxTime;
+
+  while (GetTickCount64() < t) do
+  begin
+    if Func() or Chatbox.leveledUp() then
+      Exit(True);
+    Wait(WaitPerLoop);
+  end;
+end;
+
+
+// I dont like using this because it requires using a variant array, since you cant change a type without editting the include files.
+//srl.CloseInterfacesWithEscape is for all accounts instead of on an Players.GetCurrent() basis.
+{
+procedure SetEscapeClose(Value: boolean);
+begin
+  Players.GetCurrent()^.Variants[0] := Value;
+end;
+
+function ShouldEscapeClose(): variant;
+begin
+  result := Players.GetCurrent()^.Variants[0];
+end;
+}
+
+//Gets First Unused Slot
+function TRSInventory.GetFirstUnusedSlot(): integer;
+var
+  i: integer;
+  UsedSlots: TIntArray;
+begin
+  UsedSlots := Inventory.GetUsedSlots();
+
+  if length(UsedSlots) = 28 then
+    exit(ExitMessage('WARNING: There are no empty inventory slots', -1));
+
+  for i := 0 to high(UsedSlots) do
+    if i <> UsedSlots[i] then
+      exit(i);
+end;

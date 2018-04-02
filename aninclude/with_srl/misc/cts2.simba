@@ -1,0 +1,8 @@
+function TCTS2(color, tolerance: integer; huemod, satmod: double): TCTS2Color;
+begin
+  //result := [color, tolerance, huemod, satmod];
+  result.Color := color;
+  result.Tolerance := tolerance;
+  result.HueMod := huemod;
+  result.SatMod := satmod;
+end;

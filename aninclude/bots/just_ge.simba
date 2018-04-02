@@ -1,0 +1,41 @@
+program new;
+  {$DEFINE SMART}
+  {$i SRL/osr.Simba}
+  {$I aninclude/master.simba}
+
+begin
+  smartSetup();
+
+  setupPlayers('C:\Simba\Includes\aninclude\accs.ini');
+  srl.Setup();
+  geSetup();
+  //otherSetup();
+
+  Mouse.SetSpeed(20);
+  //LoadVars();
+
+  if not (srl.isLoggedIn()) then
+  begin
+    //Players.Next();
+
+    if Players.GetCurrent()^.Login then
+      MainScreen.SetAngle(True)
+    else
+      ScriptTerminator('Error: failed to login');
+  end;
+
+  //srl.ToggleCloseInterfacesWithEscape(true);
+
+  OpenGE();
+  //BuyItem('Flax');
+  //writeln(PriceCheck('Flax'));
+  //writeln(PriceCheck('Headless arrow', 3));
+  //writeln(SellAndCollect('Headless arrow', 3, 12));
+  //writeln(SellAndCollect('Oak logs', 5));
+  //writeln(SellAndCollect('Arrow shaft', 2));
+  writeln(BuyandCollect('Flax'));
+  writeln(BuyandCollect('Flax', 2));
+
+
+  //writeln(ExitGe());
+end;

@@ -1,0 +1,9 @@
+function TStringArray.toIntArray(): TIntegerArray;
+var
+  i: integer;
+begin
+  setlength(result, length(self));
+
+  for i:=0 to high(self) do
+    result[i] := StrToInt(self[i]);
+end;

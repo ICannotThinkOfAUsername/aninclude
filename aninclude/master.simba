@@ -1,0 +1,4 @@
+{$DEFINE aninclude}
+
+{$include_once without_srl/master.simba}
+{$include_once with_srl/master.simba}

@@ -1,0 +1,155 @@
+//remove writeln(), allow for selling from geOverview
+function TGrandExchOffer.SellItem(invIndex:Int32): Boolean; override;
+begin
+  writeln(self.CurrentInterface <> geOverview);
+  writeln(Self.ExchangeType);
+  if ((Self.CurrentInterface() <> geSetupOffer) and (Self.CurrentInterface() <> geOverview))
+    or ((Self.ExchangeType <> etSell) and (Self.ExchangeType <> etEmpty)) then
+    Exit(False);
+
+  Result := Inventory.IsSlotUsed(invIndex);
+  if Result then
+    Inventory.MouseSlot(invIndex, mouse_Left);
+end;
+
+//wait time cus probs could murder cpu otherwise, untested though (ikr)
+function TGrandExchOffer.SelectItem(name:String; Exact:Boolean=False; wtime:Int32=2000): Boolean; override;
+var
+  i,t:Int64;
+  B:TBox;
+  TPA:TPointArray;
+  ATPA:T2DPointArray;
+  str:String;
+begin
+  t := GetTickCount64()+wtime;
+  repeat
+    if (FindColors(TPA, 0, Chatbox.GetChatArea())) and
+       (Pos('What would you', Chatbox.GetQuery()) > 0) then
+    begin
+      ATPA := ClusterTPAEx(TPA, 6, 4);
+      for i:=0 to High(ATPA) do
+      begin
+        B := GetTPABounds(ATPA[i]);
+        str := self.RecognizeStr(B, 0, 'SmallChars');
+        writeln(str);
+        wait(100);
+        if (Exact and (str = name)) or ((not Exact) and (Pos(name,str) > 0)) then
+        begin
+          Mouse.Click(B, mouse_left);
+          Exit(True);
+        end;
+      end;
+    end;
+  until (GetTickCount64() > t);
+end;
+
+//added 12 and 13 to FMiscBoxes
+procedure TGrandExchOffer.__Setup(); override;
+begin
+  inherited;
+
+  //stores just about all the areas - relative to FBounds (X1,Y1)
+  FMiscBoxes := [
+    [ 18,  37, 164,  59], //0:  Exchange-type
+    [ 72,  67, 108, 100], //1:  item icon
+    [ 18, 106, 164, 120], //2:  item value
+    [167,  37, 456,  59], //3:  item name
+    [167,  59, 456, 124], //4:  item description area (n lines)
+    [ 46, 153, 207, 172], //5:  quantity
+    [267, 153, 427, 172], //6:  price per item
+    [131, 207, 342, 226], //7:  total price
+    [ 54, 236, 345, 270], //8:  misc text area (two lines)
+    [372, 246, 408, 278], //9:  withdraw-1 (item)
+    [423, 246, 459, 278], //10: withdraw-2 (item)
+    [ 54, 274, 345, 288], //11: progressbar
+  //[ 77, 260, 368, 294]  //result ingame (goal)
+  //[ 54, 236, 345, 270]  //offset original
+  //[ 23,  24,  23,  24]  //base
+  //[ 77, 260, 368, 276]  //goals top
+  //[ 77, 276, 368, 294]  //goals bottom
+    [ 54, 236, 345, 252], //12: offset top half of #8
+    [ 54, 252, 345, 270]  //13: ofset bottom half of #8
+  ];
+  FMiscBoxes.Offset(Point(FBounds.x1, FBounds.y1));
+
+  FAdjBounds := [
+    [18,152,456,173],
+    [18,175,456,201]
+  ];
+  FAdjBounds.Offset(Point(FBounds.X1, FBounds.Y1));
+  FConfimButton := [161,244,312,283];
+  FConfimButton.Offset(Point(FBounds.X1, FBounds.Y1));
+end;
+
+//remove deleting stuff was a hacky/lazy fix for it fucking up when doing that. todo: test original function of this in smart.
+function TRSLoginScreen.EnterLoginInfo(Login, Pass: String): Boolean; override;
+var
+  Timeout: UInt64 := GetTickCount64() + Random(10000, 12000);
+  Clear: array [0..1] of Boolean;
+begin
+  Result := True;
+
+  if (not Self.isLoginOpen()) and (not Self.isOpen(Random(700, 1000))) then
+    Exit(False);
+
+  if (not Self.isLoginOpen()) then
+  begin
+    srl.Writeln('Opening login...');
+    Mouse.Click(Self.ExistingUserBox, mouse_Left);
+
+    if (not Self.isLoginOpen(Random(2000, 3000))) then
+      Exit(False);
+  end;
+
+  Clear[_LOGIN_BOX_LOGIN]    := CountColor(_LOGIN_TEXT_WHITE, Self.LoginBox) <> 0;
+  Clear[_LOGIN_BOX_PASSWORD] := CountColor(_LOGIN_TEXT_WHITE, Self.PasswordBox) <> 0;
+
+  { Login }
+  if (Self.GetCursor() <> _LOGIN_BOX_LOGIN) then
+    Self.SetCursor(_LOGIN_BOX_LOGIN);
+
+  {
+  if (Clear[_LOGIN_BOX_LOGIN]) then
+    while (CountColor(_LOGIN_TEXT_WHITE, Self.LoginBox) > 5) and (Timeout > GetTickCount64()) do
+    begin
+      if (not Self.isLoginOpen) then
+        Exit(False);
+
+      Keyboard.PressKey(VK_BACK);
+      Wait(Random(30, 120));
+    end;
+  }
+
+  Keyboard.Send(Login, VK_ENTER);
+
+  { Password }
+  if (Self.GetCursor() <> _LOGIN_BOX_PASSWORD) then
+    Self.SetCursor(_LOGIN_BOX_PASSWORD);
+  {
+  if (Clear[_LOGIN_BOX_PASSWORD]) then
+    while (CountColor(_LOGIN_TEXT_WHITE, Self.PasswordBox) > 5) and (Timeout > GetTickCount64()) do
+    begin
+      if (not Self.isLoginOpen) then
+        Exit(False);
+
+      Keyboard.PressKey(VK_BACK);
+      Wait(Random(30, 120));
+    end;
+  }
+  Keyboard.Send(Pass, VK_ENTER);
+end;
+
+//from "StatChars07_s" to "StatChars07"
+function TRSStats.GetCurrentLevel(Skill:Int32): Int32; override;
+var
+  lvl:String;
+begin
+  if (not Self.IsSkillVaild(skill)) or (not self.Open()) then
+    Exit(-1);
+
+  with self.GetSkillBox(skill) do
+  begin
+    lvl := GetTextAtEx(Box(X1+25,y1+2,x2-13,y2-14), 0,3,2, $00FFFF,0, 'StatChars07');
+    Result := StrToIntDef(ExtractFromStr(lvl, NUMBERS), -1);
+  end;
+end;

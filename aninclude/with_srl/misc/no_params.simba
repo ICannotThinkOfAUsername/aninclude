@@ -1,0 +1,7 @@
+{
+for @ing
+}
+function ChooseOptionIsOpen(): boolean;
+begin
+  result := ChooseOption.IsOpen();
+end;

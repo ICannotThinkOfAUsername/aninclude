@@ -1,0 +1,34 @@
+function CalculateFivePercents(Price, NumberOfFivePercents: integer; ShouldIncrease: boolean): integer;
+var
+  i: integer;
+  ChangeAmount: Double; //Extended has issues
+begin
+  for i := 0 to NumberOfFivePercents - 1 do
+  begin
+    if ShouldIncrease then
+    begin
+      if Price > 2147483647 then
+      begin
+        writeln('Status: Whoa, over max cash? Lets go back down');
+        Price := 214748364;
+        break;
+      end;
+      ChangeAmount := Price * 1.05;
+      if (ChangeAmount - Price) >= 1 then
+        Price := trunc(ChangeAmount)
+      else
+        Price := Price + 1;
+    end else
+    begin
+      if Price = 1 then
+        break;
+      ChangeAmount := Price * 0.95; //ceil seems to not need this, but whatever.
+      if (Price - ChangeAmount) >= 1 then
+        Price := ceil(ChangeAmount)
+      else
+        Price := Price - 1;
+    end;
+  end;
+
+  result := Price;
+end;

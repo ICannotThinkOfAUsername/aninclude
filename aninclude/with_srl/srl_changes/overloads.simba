@@ -1,0 +1,18 @@
+//range of time, normal distribution used.
+function TSRL.WaitFunc(XMaxTime1: integer = 5400; XMaxTime2: integer = 6600; XWaitPerLoop1: integer = 200; XWaitPerLoop2: integer = 350; Func: function: Boolean): Boolean; overload;
+var
+  WaitPerLoop, MaxTime: integer;
+  t: UInt64;
+begin
+  WaitPerLoop := srl.NormalRange(XWaitPerLoop1, XWaitPerLoop2);
+  MaxTime := srl.NormalRange(XMaxTime1, XMaxTime2);
+
+  t := GetTickCount64() + MaxTime;
+
+  while (GetTickCount64() < t) do
+  begin
+    if (Func()) then
+      Exit(True);
+    Wait(WaitPerLoop);
+  end;
+end;

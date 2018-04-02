@@ -1,0 +1,6 @@
+procedure smartSetup();
+begin
+  {$IFDEF SMART}
+    Smart.EnableDrawing := true;
+  {$ENDIF}
+end;

@@ -1,0 +1,13 @@
+var
+  //setup account
+  p2p: boolean;
+
+  //out var
+  ignoreint, ignoreint2: integer;
+
+  //ge
+  SellAll: integer = -2;
+  MaxSlots: integer;
+
+
+

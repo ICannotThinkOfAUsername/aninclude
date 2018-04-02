@@ -1,0 +1,32 @@
+{
+Converts ATPA into a TBoxArray, optionally with offsets that're adjusted to be on MS
+}
+function T2DPointArray.toTBoxArray(offset: integer = 0): TBoxArray;
+var
+  theBoxes: TBoxArray;
+  theBox: TBox;
+  p, x1, y1, x2, y2: integer;
+begin
+  for p := 0 to high(self) do
+  begin
+    x1 := (self[p].getBounds.x1 - offset);
+    if x1 < 0 then
+      x1 := 0;
+
+    y1 := self[p].getBounds.y1 - offset;
+    if y1 < 0 then
+      y1 := 0;
+
+    x2 := self[p].getBounds.x2 + offset;
+    if x2 > mainScreen.getBounds.x2 then
+      x2 := mainScreen.getBounds.x2;
+
+    y2 := self[p].getBounds.y2 + offset;
+    if y2 > mainScreen.getBounds.y2 then
+      y2 := mainScreen.getBounds.y2;
+
+    theBoxes.Insert([x1, y1, x2, y2], p);
+  end;
+
+  result := theBoxes;
+end;

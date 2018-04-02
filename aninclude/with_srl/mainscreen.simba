@@ -1,0 +1,59 @@
+function clickBoxText(uptext: TStringArray; leftClickChance: integer; SearchArea: Tbox; rightClickOption: TStringArray = ['none']): boolean;
+begin
+  Mouse.Move(srl.RandomPoint(SearchArea));
+
+  if not MainScreen.IsUpText(uptext, RandomRange(350, 950)) then //todo: change waittime based on FPS
+    exit(ExitMessage('Failed to see uptext in that box', false));
+
+  if RandomRange(1, 100) > leftClickChance then
+  begin
+    Mouse.Click(mouse_right);
+    if not srl.WaitFunc(,,,, @ChooseOptionIsOpen) then
+      exit(ExitMessage('Error: Failed to see choose option menu in time', false));
+    writeln('Choose Option menu found');
+    if not ChooseOption.Select(rightClickOption) then
+      exit(ExitMessage('Error: Failed to select uptext in choose option menu', false));
+  end else
+    if not Mouse.Click(ctred) then
+      exit(ExitMessage('Error: Failed to see lines after left clicking on uptext', false));
+
+  result := true;
+end;
+
+function findObject(uptext: TStringArray; CTS2Details: TCTS2Color; rightClickOption: TStringArray = ['none']; leftClickChance: integer = 50; SearchArea: TBox = [0, 0, 0, 0]; width: integer = 10; height: integer = 10; minimumLength: integer = 10): boolean;
+var
+  TPA: TPointArray;
+  ATPA: TPointArrayArray;
+  i: integer;
+  Boxes: TBoxArray;
+begin
+  if (SearchArea.Y1 = 0) and (SearchArea.Y2 = 0) then
+    SearchArea := MainScreen.GetBounds();
+
+  if srl.FindColors(TPA, CTS2Details, SearchArea) < minimumLength then
+    exit(ExitMessage('Error: failed to find any colors', false));
+
+  {$IFDEF SMART}
+    Smart.Image.DrawTPA(TPA, clRed);
+  {$ENDIF}
+
+  ATPA := ClusterTPAEx(TPA, width, height);
+
+  for i:=0 to high(ATPA) do
+    {$IFDEF SMART}
+      smart.Image.DrawTPA(ATPA[i], clblue);
+    {$ENDIF}
+
+  Boxes := ATPA.toTBoxArray();
+  writeln(length(Boxes), ' different TPAs detected');
+
+  for i:=0 to high(boxes) do
+  begin
+    if clickBoxText(uptext, leftClickChance, Boxes[i], rightClickOption) then
+      break;
+    if i = high(boxes) then //!!!!!@?#!@?#  todo: fix
+      exit(ExitMessage('uptext not found in any of the boxes', false));
+  end;
+
+  result := true;
+end;

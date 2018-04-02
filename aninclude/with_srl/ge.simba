@@ -1,0 +1,642 @@
+//Should do: Buy a Knife (requires scrolling down the results)
+//Should do: Option to do an exact match when searching for results (so if there was a Knife and a Other Knife, it would only choose Knife)
+function CanCollectGE(): boolean;
+begin
+  result := 'Collect' = GrandExchange.RecognizeStr(GrandExchange.FButtons[ebCollect], clWhite, 'StatChars07', 60);
+end;
+
+function CanNotCollectGE(): boolean;
+begin
+  result := 'Collect' <> GrandExchange.RecognizeStr(GrandExchange.FButtons[ebCollect], clWhite, 'StatChars07', 60);
+end;
+
+function PriceChangedTo(GoalPrice: integer; MinWaitTime: integer = 1850; MaxWaitTime: integer = 3050; WaitAfter: integer = 0): boolean;
+var
+  WaitTime, t: integer;
+begin
+  if not (GoalPrice > 0) then
+    exit(ExitMessage('Invalid price of ' + IntToStr(GoalPrice), false));
+
+  if GoalPrice = GrandExchange.Offer.Info.Price then
+    exit(ExitMessage('The price is already that!', true));
+
+  WaitTime := RandomRange(MinWaitTime, MaxWaitTime);
+
+  t := GetTickCount();
+  {
+  GlobalStopWatch.Reset();
+  GlobalStopWatch.Start();
+  }
+  while GoalPrice <> GrandExchange.Offer.Info.Price do
+  begin
+    wait(200);
+    //writeln('GSW: ', GlobalStopWatch.GetTime);
+    if GoalPrice = GrandExchange.Offer.Info.Price then
+      break;
+    if (GetTickCount - t) > WaitTime then
+      exit(false);
+  end;
+
+  result := true;
+  wait(WaitAfter);
+end;
+
+function QuantityChanged(WaitAfter: integer = 0): boolean;
+var
+  StartingQuantity, t: integer;
+begin
+  StartingQuantity := GrandExchange.Offer.Quantity;
+  if not (StartingQuantity > 0) then
+    exit(ExitMessage('Invalid Quantity of ' + IntToStr(StartingQuantity), false));
+
+  t := GetTickCount();
+  {
+  GlobalStopWatch.Reset();
+  GlobalStopWatch.Start;
+  }
+  while (GetTickCount - t) < randomrange(4000, 6000) do
+  begin
+    wait(200);
+    if StartingQuantity <> GrandExchange.Offer.Quantity then
+    begin
+      result := true;
+      break;
+    end;
+  end;
+
+  if result then
+    wait(WaitAfter);
+end;
+
+//for @ing
+function GeIsOpenMain(): boolean;
+begin
+  result := GrandExchange.IsOpen;
+end;
+
+function GeIsOpenHistory(): boolean;
+begin
+  result := StrContains(GrandExchange.Offer.Title(), 'History');
+end;
+
+function GeIsOpenAnyScreen(): boolean;
+begin
+  result := StrContains(GrandExchange.Offer.Title(), 'Grand');
+end;
+
+//for @ing
+function GeIsNotOpenAnyScreen(): boolean;
+begin
+  result := not GeIsOpenAnyScreen();
+end;
+
+function GeIsOpenOffer(): boolean;
+begin
+  result := StrContains(GrandExchange.Offer.Title(), 'Offer')
+end;
+
+//for @ing
+function ItemPriceAvailable(): boolean;
+begin
+  result := GrandExchange.Offer.Price > 0;
+end;
+
+//for @ing
+function GeSearchResultsChanged(): boolean;
+var
+  searchResultsBox: Tbox;
+begin
+  searchResultsBox := chatbox.GetChatArea();
+  searchResultsBox.y1 += 20;
+
+  //writeln(chatbox.GetChatArea());
+  //writeln(searchResultsBox);
+
+  result := didPixelsShift(searchResultsBox);
+end;
+
+//for @ing
+function GeSearchBoxAvailable(): boolean;
+begin
+  result := (Pos('What would you', Chatbox.GetQuery()) > 0);
+end;
+
+//for @ing
+function AtSetupOffer(): boolean;
+begin
+  result := GrandExchange.IsOpen(geSetupOffer);
+end;
+
+function IsCollectBoxEmpty(Box: integer): boolean;
+var
+  BoxToCheck: Tbox;
+  collectTPA: TPointArray;
+begin
+  writeln(GrandExchange.Offer.info);
+
+  BoxToCheck := GrandExchange.Offer.FMiscBoxes[box + 8];
+
+  if not FindColorsTolerance(collectTPA, 2897729, BoxToCheck, 1, ColorSetting(2, 0.0, 0.37)) then
+    exit(ExitMessage('Error: No colors background colors found!? Youve got a bigger problem here', false));
+
+  if length(collectTPA) > 1100 then //1147 was found to be empty. limited testing.
+    exit(true);
+end;
+
+function getQuantity(): integer;
+begin
+  result := GrandExchange.RecognizeInt(GrandExchange.Offer.FMiscBoxes[12], 4176127, StatChars07);
+end;
+
+function getTotalPrice(): integer;
+begin
+  result := GrandExchange.RecognizeInt(GrandExchange.Offer.FMiscBoxes[13], 4176127, StatChars07);
+end;
+
+function ReturnToGe(): boolean;
+begin
+  writeln('Status: Trying to return to ge');
+
+  GrandExchange.Offer.Click(ebReturn);
+
+  if srl.WaitFunc(3000, 5400,,,@GeIsOpenMain) then
+    exit(ExitMessage('Status: Successfully returned to the GE', true))
+  else
+    exit(ExitMessage('Error: Failed to get back to the GE via return button.', false));
+end;
+
+//for @ing
+function OfferIsAborted(): boolean;
+begin
+  result := GrandExchange.Offer.State() = osAborted;
+end;
+
+function AbortOffer(): boolean;
+begin
+  GrandExchange.Offer.Click(ebAbort);
+  if not srl.WaitFunc(,,,, @OfferIsAborted) then
+    exit(ExitMessage('Status: Failed to abort offer successfully', false))
+  else
+    exit(ExitMessage('Status: Successfully aborted offer', true));
+end;
+
+
+function ConfirmSafely(): boolean;
+begin
+  if not GeIsOpenAnyScreen then
+    exit(false);
+
+  GrandExchange.Offer.Confirm();
+
+  if srl.WaitFunc(2400, 4800,,,@GeIsOpenMain) then
+    exit(true);
+
+  writeln('Error: Failed to get back to ge by confirming, trying to get back manually');
+
+  if not ReturnToGe() then
+    exit(ExitMessage('Error: Failed to return to ge', false));
+
+  writeln('Status: Failed to confirm but succeed in returning to ge');
+end;
+
+function GetAvailableSlots(): TIntegerArray;
+var
+  i: integer;
+begin
+  for i := 0 to 7 do
+    if GrandExchange.Available(i) then
+      result.Append(i);
+end;
+
+function GetFirstAvailableSlot(): integer;
+begin
+  result := GetAvailableSlots[0];
+end;
+
+function CollectOffer(Slot: Int32; AbortIfIncomplete: boolean = true; out OutPrice, OutQuantity: integer): boolean;
+var
+  aBox: Tbox;
+  i: integer;
+  collectableBoxes: TIntegerArray;
+begin
+  if not GeIsOpenMain then
+    exit(ExitMessage('Error: The main ge screen was not open when going to CollectOffer()', false));
+
+  aBox := GrandExchange.OffsetToTable(slot, GrandExchange.FExchBoxes[2]);
+  aBox.x2 := aBox.x1 + 100;
+  aBox.y2 := aBox.y1 + 50;
+
+  if not ((GrandExchange.Info(slot).Typ = etSell) or (GrandExchange.Info(slot).Typ = etBuy)) then
+    exit(ExitMessage('Error: Slot ' + IntToStr(slot) + ' is not available ', false));
+
+  Mouse.Click(srl.RandomPoint(aBox), mouse_Left);
+
+  if not srl.WaitFunc(,,,, @GeIsOpenOffer) then
+    exit(ExitMessage('Error: Failed to open offer.', false));
+
+  if not srl.WaitFunc(,,,, @ItemPriceAvailable) then
+    exit(ExitMessage('Error: Failed to see an item price.', false));
+
+  if GrandExchange.Offer.State() = osIncomplete then
+    if AbortIfIncomplete then
+    begin
+      if not AbortOffer() then
+        exit(false);
+      if not srl.WaitFunc(,,,, @OfferIsAborted) then
+        exit(ExitMessage('Status: Failed to see offer abort successfully.', false));
+    end;
+
+  OutQuantity := getQuantity();
+  if OutQuantity > 0 then
+    OutPrice := Round(getTotalPrice() / OutQuantity);
+  {
+  if length(collectableBoxes) = 0 then
+    if not AbortIncompletes then
+    begin
+      if not ReturnToGe then
+        exit(ExitMessage('Error: Failed to return to ge after trying to collect an empty ge', false));
+      exit(ExitMessage('Status: There are no items to collect', true));
+    end else
+    begin
+      if not AbortOffer() then
+        exit(false);
+      if not srl.WaitFunc(,,,, @OfferIsAborted) then
+        exit(ExitMessage('Status: Failed to see offer abort successfully.', false));
+    end;
+  }
+  for i:=1 to 2 do
+    if not IsCollectBoxEmpty(i) then
+      collectableBoxes.Append(i);
+
+  for i:=1 to length(collectableBoxes) do
+    Mouse.Click(srl.RandomPoint(GrandExchange.Offer.FMiscBoxes[8 + i]), mouse_Left);
+
+  //mouse.Move(0, 0); //todo: make this not suck, by moving just a little bit, based on current mousepos
+
+  collectableBoxes.Empty();
+  for i:=1 to 2 do
+    if not IsCollectBoxEmpty(i) then
+      collectableBoxes.Append(i);
+
+  if not srl.WaitFunc(,,,, @GeIsOpenMain) then
+  begin
+    writeln('Error: Failed to get back to GE mainpage by just collecting items');
+
+
+
+    exit(ExitMessage('Error: Failed to get back to GE mainpage after collecting items', false));
+  end;
+
+  result := true;
+end;
+
+function CollectOffer(Slot: Int32; AbortIfIncomplete: boolean = true): boolean; overload;
+begin
+  result := CollectOffer(Slot, AbortIfIncomplete, IgnoreInt, IgnoreInt2);
+end;
+
+procedure LetOfferGo(Slot: integer);
+var
+  t: integer;
+begin
+
+  t := GetTickCount();
+  {
+  GlobalStopWatch.Reset();
+  GlobalStopWatch.Start();
+  }
+  while GrandExchange.State(Slot) <> osCompleted do
+  begin
+    writeln('waiting for it to complete');
+    writeln(GetTickCount - t);
+    wait(RandomRange(150, 350));
+    if (GetTickCount - t) > RandomRange(1250, 1850) then
+      break;
+  end;
+end;
+
+function _ChangePrice(GoalPrice: integer): boolean;
+var
+  StartingPrice: integer;
+begin
+  StartingPrice := GrandExchange.Offer.Info.Price;
+
+  writeln('The price is: ', StartingPrice);
+  writeln('The price should be: ', GoalPrice);
+
+  if GrandExchange.Offer.Info.Price = GoalPrice then
+    exit(ExitMessage('The price has changed!', true));
+
+  if not PriceChangedTo(GoalPrice) then
+    writeln('Error: The price did not change? Lets try again');
+
+  if GrandExchange.Offer.Info.Price <> GoalPrice then
+  begin
+    writeln('Error: The current price when buying is not what it should be. Trying to set it again.');
+
+    GrandExchange.Offer.SetPrice(GoalPrice);
+    if not PriceChangedTo(GoalPrice) then //todo: improve this + refactor
+    begin
+      writeln('Error: The price did not change again???')
+      if not ReturnToGe() then
+        exit(ExitMessage('Error: Failed to return to GE after failing to set price', false))
+      else
+        exit(ExitMessage('Status: Returned to GE after failing to set price', false));
+    end else
+      if GrandExchange.Offer.Info.Price <> GoalPrice then
+        exit(ExitMessage('Error: Failed to set price to: ' + IntToStr(GoalPrice), false))
+      else
+        exit(ExitMessage('Status: The price has changed after the second attempt)', true));
+  end else
+    exit(ExitMessage('Status: Price changed to goal price successfully', true));
+end;
+
+function BuyItem(ItemName: string; Quantity: integer = 1; Price: integer = 0; FivePercentClicks: integer = 2; LetOfferGoThrough: boolean = true): boolean;
+var
+  AvailableSlots: TIntegerArray;
+  i, FirstAvailableSlot: integer;
+begin
+  writeln('Status: Trying to buy an item.');
+
+  if not srl.WaitFunc(,,,,@GeIsOpenMain) then
+    exit(ExitMessage('Error: Failed to see ge open in time', false));
+
+  AvailableSlots := GetAvailableSlots();
+  if length(AvailableSlots) < 1 then
+    exit(ExitMessage('Error: Failed to see any available slots.', false));
+  FirstAvailableSlot := AvailableSlots[0];
+
+  if not GrandExchange.PlaceOffer(etBuy) then
+    exit(ExitMessage('Error: Failed to create buy offer', false));
+  if not srl.WaitFunc(,,,,@GeSearchBoxAvailable) then
+    exit(ExitMessage('Error: Failed to see ge search box available in time', false));
+
+  if not GrandExchange.Offer.SearchFor(LowerCase(ItemName)) then
+    exit(ExitMessage('Error: Failed to search for: ' + ItemName, False));
+  if not srl.WaitFunc(,,,,@GeSearchResultsChanged) then
+    //exit(ExitMessage('Error: Failed to see search results change', False)); //false positive since it didnt need to change sometimes (I believe)
+    writeln('Error: Failed to see search results change');
+
+  if not GrandExchange.Offer.SelectItem(ItemName) then
+    exit(ExitMessage('Error: Failed to select item: ' + ItemName, False));
+  if not srl.WaitFunc(,,,,@ItemPriceAvailable) then
+    exit(ExitMessage('Error: Failed to get a price in time.', False));
+
+  if (Price = 0) then
+  begin
+    Price := CalculateFivePercents(GrandExchange.Offer.Info.Price, FivePercentClicks, true);
+    if Price <> GrandExchange.Offer.Info.Price then
+      GrandExchange.Offer.Click(abIncPrice5Prc, FivePercentClicks);
+  end else
+    GrandExchange.Offer.SetPrice(price);
+
+  if not _ChangePrice(price) then
+    exit(ExitMessage('Error: Failed to change price whilst buying an item', false));
+
+  if GrandExchange.Offer.Quantity() <> Quantity then
+  begin
+    GrandExchange.Offer.SetQuantity(Quantity);
+
+    if not QuantityChanged then
+      exit(ExitMessage('Error: Quantity failed to change.', false));
+  end;
+
+  if not ConfirmSafely then
+    exit(ExitMessage('Error: Failed to ConfirmSafely.', false));
+
+  writeln('Sold item successfully!');
+
+  writeln('FirstAvailable: ', FirstAvailableSlot);
+  if LetOfferGoThrough then
+    LetOfferGo(FirstAvailableSlot);
+
+  writeln('Done waiting for the offer we put in to go through.');
+  result := true;
+end;
+
+function SellItem(ItemName: string; InventorySlot: integer; Quantity: integer = 1; FivePercentClicks: integer = 2; Price: integer = 0; ShouldIncrease: boolean = false; CollectAfter: boolean = true; LetOfferGoThrough: boolean = true): boolean;
+var
+  AvailableSlots: TIntegerArray;
+  DetectedItemName: String;
+  GeMidPrice, CurrentPrice: integer;
+  i, FirstAvailableSlot: integer;
+begin
+  writeln('Status: Trying to sell an item.');
+
+  if not srl.WaitFunc(,,,,@GeIsOpenMain) then
+    exit(ExitMessage('Error: Failed to see ge open in time', false));
+
+  AvailableSlots := GetAvailableSlots();
+  if length(AvailableSlots) < 1 then
+    exit(ExitMessage('Error: Failed to see any available slots.', false));
+  FirstAvailableSlot := AvailableSlots[0];
+
+  {if not GrandExchange.PlaceOffer(etSell) then}
+  if not GrandExchange.Offer.SellItem(InventorySlot) then
+    exit(ExitMessage('Error: Failed to create sell offer, terminating', false));
+  if not srl.WaitFunc(,,,,@AtSetupOffer) then
+    exit(ExitMessage('Error: Failed to see setup offer screen in time', false));
+
+  DetectedItemName := GrandExchange.Offer.ItemName;
+  if DetectedItemName <> ItemName then
+  begin
+    wait(RandomRange(600, 1200));
+    if DetectedItemName <> ItemName then
+      exit(ExitMessage('Error: The desired item name of ' + ItemName + ' does not match the detected item name of ' + DetectedItemName, false));
+  end
+
+  if not srl.WaitFunc(,,,,@ItemPriceAvailable) then
+    exit(ExitMessage('Error: Why cant you see a price??', False));
+
+  GeMidPrice := GrandExchange.Offer.Info.Price;
+
+  if (Price = 0) or (Price = SellAll) then
+  begin
+    Price := CalculateFivePercents(GeMidPrice, FivePercentClicks, ShouldIncrease);
+    if Price <> GrandExchange.Offer.Info.Price then
+      GrandExchange.Offer.Click(abDecPrice5Prc, FivePercentClicks);
+  end else
+  begin
+    GrandExchange.Offer.SetPrice(Price);
+  end;
+
+  if not _ChangePrice(price) then
+    exit(ExitMessage('Error: Failed to change price whilst selling an item', false));
+
+  if (Quantity <> SellAll) and (GrandExchange.Offer.Quantity() <> Quantity) then
+  begin
+    GrandExchange.Offer.SetQuantity(Quantity);
+
+    if not QuantityChanged then
+      exit(ExitMessage('Error: Quantity failed to change.', false));
+  end;
+
+  if not ConfirmSafely then
+    exit(ExitMessage('Error: Failed to ConfirmSafely.', false));
+
+  writeln('first available slot is: ', FirstAvailableSlot);
+  writeln('LetOfferGoThrough is: ', LetOfferGoThrough);
+  writeln('State is: ', GrandExchange.State(FirstAvailableSlot));
+  if LetOfferGoThrough then
+    LetOfferGo(FirstAvailableSlot);
+
+  exit(ExitMessage('Sold item successfully!', true));
+end;
+
+function TryToOpenGe(): boolean;
+begin
+  result := findObject(['Grand', 'Exchange', 'Clerk'], TCTS2(4992570, 13, 0.09, 0.54), ['nge Gr'], 0);
+end;
+
+function OpenGE(): boolean;
+begin
+  if GeIsOpenAnyScreen then
+    exit(ExitMessage('Error: GE is already open!', true));
+
+  if not srl.WaitFunc(650, 2450,,, @TryToOpenGe) then
+    exit(ExitMessage('Error: Failed to try to open ge', false));
+
+  if not srl.WaitFunc(,,,, @GeIsOpenMain) then
+    exit(ExitMessage('Error: Ge screen did not pop up', false));
+
+  result := true;
+end;
+
+function collectAll(): boolean;
+var
+  Offers: TIntegerArray;
+  i: integer;
+begin
+  if CanCollectGE() then
+    GrandExchange.Offer.Click(ebCollect);
+
+  if not srl.WaitFunc(,,,, @CanNotCollectGE) then
+    exit(ExitMessage('Error: Failed to see collect GE button go away.', false));
+
+  Offers := GetAvailableSlots;
+
+  for i:=0 to 7 do
+  begin
+    if Offers.Find(i) = -1 then
+      CollectOffer(i);
+  end;
+
+  if not (length(GetAvailableSlots) = maxSlots) then
+    exit(ExitMessage('Error: Available slots of ' + IntToStr(length(GetAvailableSlots)) + ' <> max slots of: ' + IntToStr(MaxSlots), false));
+
+  writeln('Status: Nothing left to collect!');
+  result := true;
+end;
+
+function GetToMainGeScreen(): boolean;
+begin
+  if GeIsOpenMain then
+    exit(ExitMessage('Status: Already at MainGeScreen', true));
+
+  if not GeIsOpenAnyScreen then
+    exit(ExitMessage('Error: No ge screen is open, cant return to main screen', false));
+
+  if GeIsOpenHistory() then
+    GrandExchange.Offer.Click(ebHistory)
+  else
+    GrandExchange.Offer.Click(ebReturn);
+
+  if not srl.WaitFunc(,,,, @GeIsOpenMain) then
+    exit(ExitMessage('Error: Failed to get back to main ge screen after hitting return', false))
+  else
+    exit(true);
+end;
+
+function BuyAndCollect(ItemName: string; Quantity: integer = 1; Price: integer = 0; FivePercentClicks: integer = 2; LetOfferGoThrough: boolean = true): boolean;
+var
+  OurSlot: integer;
+begin
+  if not GetToMainGeScreen() then
+    exit(ExitMessage('Error: Failed to get to get back to main ge screen when BuyAndCollect()ing', false));
+
+  OurSlot := GetFirstAvailableSlot();
+
+  if not BuyItem(ItemName, Quantity, Price, FivePercentClicks, LetOfferGoThrough) then
+    exit(ExitMessage('Error: Failed to Buy ' + ItemName, false));
+
+  //If not all buy but we successfully abort the offer, CollectOffer() will return true
+  if not CollectOffer(OurSlot, true) then
+    exit(ExitMessage('Error: Failed to collect item when BuyAndCollect()ing', false))
+  else
+    exit(true);
+end;
+
+function SellAndCollect(ItemName: string; InventorySlot: integer; Quantity: integer = 1; FivePercentClicks: integer = 2; Price: integer = 0; ShouldIncrease: boolean = false; CollectAfter: boolean = true; LetOfferGoThrough: boolean = true): boolean;
+var
+  OurSlot: integer;
+begin
+  if not GetToMainGeScreen() then
+    exit(ExitMessage('Error: Failed to get to get back to main ge screen when SellAndCollect()ing', false));
+
+  OurSlot := GetFirstAvailableSlot();
+
+  if not SellItem(ItemName, InventorySlot, Quantity, FivePercentClicks, Price) then
+    exit(ExitMessage('Error: Failed to Sell ' + ItemName, false));
+
+  //If not all sell but we successfully abort the offer, CollectOffer() will return true
+  if not CollectOffer(OurSlot, true) then
+    exit(ExitMessage('Error: Failed to collect item when SellAndCollect()ing', false))
+  else
+    exit(true);
+end;
+
+function ExitGe(): boolean;
+begin
+  if not GeIsOpenAnyScreen then
+    exit(ExitMessage('Error: When going to exit the ge, the ge was not open.', false));
+
+  if srl.CloseInterfacesWithEscape then
+    Keyboard.PressKey(vk_escape)
+  else
+    GrandExchange.Offer.Click(ebClose);
+
+  if not srl.WaitFunc(,,,, @GeIsNotOpenAnyScreen) then
+    exit(ExitMessage('Error: Failed to see ge screen go away in time', false))
+  else
+    exit(ExitMessage('Status: Successfully closed ge screen.', true));
+end;
+
+function PriceCheck(ItemName: string; InventorySlot: integer = -2): array [0..1] of integer;
+var
+  OurSlot, ThePrice, TheQuantity: integer;
+begin
+  if not GetToMainGeScreen() then
+  begin
+    writeln('Error: Failed to GetToMainGeScreen');
+    exit();
+  end;
+
+  OurSlot := GetFirstAvailableSlot();
+  if InventorySlot = -2 then
+  begin
+    InventorySlot := Inventory.GetFirstUnusedSlot();
+    if InventorySlot = -1 then
+    begin
+      writeln('Error: There are no Available ge slots');
+      exit();
+    end;
+  end;
+
+  ignoreint := -2;
+
+  if not BuyAndCollect(ItemName) then
+  begin
+    writeln('Error: Failed to BuyAndCollect when PriceChecking');
+    exit();
+  end;
+
+  result[0] := ignoreint;
+
+  if not SellAndCollect(ItemName, InventorySlot) then
+  begin
+    writeln('Error: Failed to SellAndCollect when PriceChecking');
+    exit();
+  end;
+
+  result[1] := ignoreint;
+end;

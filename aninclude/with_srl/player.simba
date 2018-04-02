@@ -1,0 +1,67 @@
+procedure DeclarePlayer(username, pw, pin: string; members, active: boolean; worlds: TIntegerArray);
+begin
+  with Players.New()^ do
+  begin
+    LoginName := username;
+    Password  := pw;
+    BankPin   := pin;
+    isMember  := members;
+    isActive  := active;
+    World     := worlds[0]; //todo: multiple worlds plz
+  end;
+
+  {
+  with Players.New()^ do
+  begin
+    LoginName := '';
+    Password := '';
+    BankPin := 'pin';
+
+    isActive := True;
+    World := 2; // This player will be logged into world 2
+  end;
+  }
+end;
+
+function GetNumberOfAccounts(filePath: string): integer;
+var
+  tempString: string;
+begin
+  tempString := ReadINI('overhead', 'accounts', filePath);
+
+  if tempString then
+    result := StrToInt(tempString);
+end;
+
+procedure setupPlayers(pathToFile: string);
+var
+  i, numberOfAccounts: integer;
+
+  world: integer;
+  username, password, pin: string;
+  isMember, isActive: boolean;
+  worlds: TIntegerArray;
+  tempString: TStringArray;
+begin
+  numberOfAccounts := GetNumberOfAccounts(pathToFile);
+
+  if not (numberOfAccounts > 0) then
+    ScriptTerminator('Error: Failed to figure out how many accounts there are.');
+
+  for i:=1 to numberOfAccounts do
+  begin
+    username := ReadINI('account' + IntToStr(i), 'username', pathToFile);
+    password := ReadINI('account' + IntToStr(i), 'password', pathToFile);
+    pin      := ReadINI('account' + IntToStr(i), 'pin', pathToFile);
+    isMember := StrToBool(ReadINI('account' + IntToStr(i), 'isMember', pathToFile));
+    isActive := StrToBool(ReadINI('account' + IntToStr(i), 'isActive', pathToFile));
+
+    ExplodeWrap(',', ReadINI('account' + IntToStr(i), 'worlds', pathToFile), tempString);
+    worlds := tempString.toIntArray();
+
+    //writeln(username, ' ', password, ' ', pin, ' ', isMember, ' ', isActive, ' ', worlds);
+    writeln();
+
+    DeclarePlayer(username, password, pin, isMember, isActive, worlds);
+  end;
+end;

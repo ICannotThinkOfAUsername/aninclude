@@ -1,0 +1,12 @@
+procedure ScriptTerminator(debugText: string);
+begin
+  writeln(debugText);
+  TerminateScript;
+end;
+
+//thanks slacky & olly
+function ExitMessage(S: String; ResVar:Variant): Variant;
+begin
+  WriteLn(S);
+  Exit(ResVar);
+end;

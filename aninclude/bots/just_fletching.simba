@@ -1,0 +1,276 @@
+program new;
+  {$DEFINE SMART}
+  {$i SRL/osr.Simba}
+  {$I aninclude/master.simba}
+var
+  GlobalFletchingLevel: integer;
+
+  {$I scripts/fletcher.simba}
+
+
+const
+  ArrowShaftsTime = 12000; //time to complete 10x15 arrow shafts
+
+var
+  featherBMP, arrowShaftBMP: integer;
+
+function nothing(): boolean;
+begin
+  wait(100);
+end;
+
+function ChooseFletchingActivity(training: boolean = true): string;
+begin
+  case GlobalFletchingLevel of
+    1..24: exit('HeadlessArrows');
+    //20..24: exit('OakShortbows');
+    25..34: exit('OakLongbows');
+    35..39: exit('WillowShortbows');
+    40..49: exit('WillowLongbows');
+    50..54: exit('MapleShortbows');
+    55..69: exit('MapleLongbows');
+    70..84: exit('YewLongbows');
+    85..99: exit('MagicLongbows');
+    else
+      exit('Error: Thats not a valid fletching level');
+  end;
+end;
+
+function DoFletchingActivity(activity: integer): boolean;
+begin
+  case Activity of
+
+    else scriptterminator('invalid fletching activity');
+  end;
+end;
+
+//Returns true if production screen is found in chatbox
+function TRSChatbox.ProductionScreen(): Boolean;
+const
+  TEXT_COL = 2109504;
+var
+  p: TPoint;
+begin
+  if (srl.FindText(p, 'How many', 'UpChars07', TEXT_COL, 0, Self.FBounds)) then
+    exit(true);
+end;
+
+//for @ing
+function ProductionScreenIsUp(): boolean;
+begin
+  result := Chatbox.ProductionScreen();
+end;
+
+//WaitFunc that also checks for a box not having pixelshift, on top of chatbox level up message
+function TSRL.WaitFuncChatboxAndBox(XMaxTime1: integer = 5400; XMaxTime2: integer = 6600; XWaitPerLoop1: integer = 200; XWaitPerLoop2: integer = 350; Func: function: Boolean; AndBox: Tbox; MaxNoShiftTime: integer = 2400): Boolean;
+var
+  WaitPerLoop, MaxTime, Before, After: integer;
+  PixelsShifted: integer;
+  Timer: TTimeMarker;
+begin
+  WaitPerLoop := srl.NormalRange(XWaitPerLoop1, XWaitPerLoop2);
+  MaxTime := srl.NormalRange(XMaxTime1, XMaxTime2);
+
+  Before := BitmapFromClient(AndBox);
+
+  //Timer.Reset;
+  Timer.Start;
+
+  while Timer.GetTime() < MaxTime do
+  begin
+    if Func() then
+      exit(ExitMessage('Status: Func returned true!', true));
+
+    if Chatbox.leveledUp() then
+      exit(ExitMessage('Status: chatbox level up message seen!', true));
+
+    if Timer.GetTime() > MaxNoShiftTime then
+    begin
+      writeln('Checking Box for No Shift');
+      After := BitmapFromClient(AndBox);
+      PixelsShifted := CalculatePixelShift(Before, After, [0, 0, AndBox.x2 - AndBox.X1, AndBox.y2 - AndBox.y1]);
+      if (PixelsShifted = 0) then
+      begin
+        FreeBitmap(Before);
+        FreeBitmap(After);
+        exit(ExitMessage('Status: Pixels havent shifted in time, we must be done', true));
+      end else
+      begin
+        writeln(IntToStr(PixelsShifted) + ' pixels have shifted');
+        Before := BitmapFromClient(AndBox);
+        Timer.Reset;
+        Timer.Start;
+        MaxTime := MaxTime - MaxNoShiftTime;
+      end;
+    end;
+
+    Wait(WaitPerLoop);
+  end;
+end;
+
+procedure LoadFletcherVars();
+begin
+{
+  featherBmp := BitmapFromString(25, 24, 'meJyNlOFKAkEUhbd36AF8AgliQS' +
+        'xFikSJHk2krPwRRZhZiCgWEtHLdfLsnj0zYxFclplh5ttzz70zeae' +
+        'fd/rNk3NGbtO83dvLsvXb12r1uVx+LBYbRLafIa5vJqPR43B4j8Ce' +
+        'Wu0AwbMi4HgxwMoWJc58vnl5fRdHQdTh8VnACcfYg4g4CK4rKIkoZ' +
+        'acc8cUeEPglZzZbU5KrqiSV6YiAwDoJhLik2/HUUS7JE/S8xEFgSk' +
+        'niKIiiqwjXk3IAESeNArVNTUq8ZCnHJTG1y6sHRIRKy4cN/+cgihY' +
+        'KtUmY/GHVHBVxZFSkzb3CIOXEqYVnqUcNpuwk6Y/UlEiEYpuRBsj0' +
+        'ebWzt90iv7ZeO9KImjwt/do6wTkuKUJhfNS7IE0cZITrPxjcYdGbk' +
+        'IVTk7s87SHnt2srJaJ5BaNFoqKMwry6bjWvbb15ymmj3aVXLqloP5' +
+        'PB9HnWX7Z6q/DHHdiN6nTlT/Qu/ehpFQpVuJQTVMoK5Ar5o6BXzSW' +
+        'XhP1stups+Z6kf9GG1Cg3VjR/nYqprbgJXnea4PX1W9/YGhhdQ9pV' +
+        'lcAauFH6kD651ZtQTr8B35IMrQ==');
+        }
+  featherBmp := BitmapFromString(9, 9, 'meJx1y0sKgDAMRdG4B7fSqWO3538m' +
+        'IlKllJYqRcTN+TAQiiBcMjjhqaLMiMJ+e385d1obEeWE1PsSNyau2' +
+        'wFvuxmOPo6AEL7sWgeeIMZ00g8LvyAIQ56I8wsoniaeTppmQn9e1e' +
+        'MDhZ9/9A==');
+
+  arrowShaftBmp := BitmapFromString(25, 21, 'meJyllEsLwjAQhCvixbNn6VlQhK' +
+        'KIVPGBpeLN//9j3HaS6ZjE+oJlyfPLZLPZorys9nVRXtRsZJBlw2m' +
+        'ZjSfWQNt8ni+1rV3zAaTwZK5RZoDiFPz2dFsdrjDSPpGENiWZb2R4' +
+        'FGi65q0kXYAbeVRl/jdJNqiSkpweVKA5iQqimpQXSOpQzR2rfyQh5' +
+        'vpq/0jqSYCvouSSyud2jyTNjViScczib6JHv5L3JMnn0qsoETWa3d' +
+        '9GiaqSkrQb/9x0LrW349HYwpXQr5KU091uXy+2Zz4fppJdLRR6KGf' +
+        'BAdYamCKcK4P3jTkhzVc/oszm66OZSgIE94oLnQpr0qzFauoCxXvF' +
+        '2zeHynHcB3QezwpjPM00zgkl7WCwsRPmbbGrGT2WXINLHXDV4AF6PtJf');
+end;
+
+procedure FreeFletcherVars();
+begin
+  FreeBitmap(featherBMP);   //todo: check if loaded b4 freeing?
+  FreeBitmap(arrowShaftBMP);
+end;
+
+function TRSInventory.clickItemBMP(theBMP, tolerance, clickType: integer): boolean;
+var
+  itemSlots: TIntegerArray;
+begin
+  if not self.Open() then
+    exit(false);
+
+  itemSlots := Inventory.FindItem(theBMP, tolerance, 28);
+  writeln('Status: found ', length(itemSlots), ' slots with that item');
+
+  if (length(itemSlots) = 0) then
+    exit(false);
+
+  if not Inventory.IsSlotUsed(itemSlots[0]) then
+    exit(ExitMessage('Error: No item exists there in inventory slot ' + IntToStr(itemSlots[0]) + ' (+1)', false));
+
+  Mouse.Click(Inventory.GetSlotBox(itemSlots[0]), clickType);
+
+  //todo: check if inventory slot changed.
+
+  result := true;
+end;
+
+procedure test();
+begin
+  Inventory.clickItemBMP(featherBMP, 50, mouse_left);
+  Inventory.clickItemBMP(arrowShaftBMP, 50, mouse_left);
+
+  if not srl.WaitFunc(,,,, @ProductionScreenIsUp) then
+    ScriptTerminator('Fatal Error: Failed to see production screen up in time')
+  else
+    writeln('production screen found!');
+
+  Keyboard.PressKey(vk_space);
+
+  if srl.WaitFuncChatboxAndBox(ArrowShaftsTime, ArrowShaftsTime + 1200,,, @nothing, Inventory.GetBounds()) then
+    writeln('true did it')
+  else
+    writeln('false no do it');
+end;
+
+function MakeHeadlessArrows(): boolean;
+begin
+  if GlobalFletchingLevel < 1 then
+  begin
+    writeln('GlobalFletchingLevel was not yet initialized, setting to current level.');
+    GlobalFletchingLevel := Stats.GetCurrentLevel(SKILL_FLETCHING);
+  end;
+
+  inventory.Open();
+
+  while not Chatbox.LeveledUp() do
+  begin
+    test();
+
+    if Chatbox.LeveledUp() then
+    begin
+      writeln('Status: Leveled up!');
+      writeln('My fletching level was: ', GlobalFletchingLevel);
+      GlobalFletchingLevel += 1;
+      writeln('My fletching level is now: ', GlobalFletchingLevel);
+      break;
+    end;
+  end;
+
+
+end;
+
+procedure fletchingMainloop(method: string);
+begin
+  writeln('Status: hey Im fletching over here!');
+  wait(1000);
+
+  if method = 'training' then
+    method := ChooseFletchingActivity();
+
+  case method of
+   'HeadlessArrows': MakeHeadlessArrows();
+  else
+    writeln('Error: [', method, '] is not a valid method');
+  end;
+end;
+
+procedure fletch(runTime: integer; method: string = 'training');
+var
+  t: integer;
+begin
+  t := GetTickCount;
+  while (GetTickCount - t) < runTime do
+  begin
+    fletchingMainloop(method);
+  end;
+end;
+
+
+
+begin
+  smartSetup();
+
+  setupPlayers('C:\Simba\Includes\aninclude\accs.ini');
+  srl.Setup();
+  geSetup();
+  //otherSetup();
+
+  Mouse.SetSpeed(20);
+  //LoadVars();
+
+  if not (srl.isLoggedIn()) then
+  begin
+    //Players.Next();
+
+    if Players.GetCurrent()^.Login then
+      MainScreen.SetAngle(True)
+    else
+      ScriptTerminator('Error: failed to login');
+  end;
+
+  LoadFletcherVars();
+  AddOnTerminate('FreeFletcherVars', true);
+
+  {
+  repeat
+    test();
+  until false;
+  }
+
+  //GlobalFletchingLevel := 1;
+  fletch(1);
+end;

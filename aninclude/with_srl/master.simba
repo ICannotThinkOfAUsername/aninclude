@@ -1,0 +1,12 @@
+{$include_once globals.simba}
+
+{$include_once srl_changes/master.simba}
+{$include_once basic_types/master.simba}
+{$include_once misc/master.simba}
+
+{$include_once mainscreen.simba}
+{$include_once ge.simba}
+
+{$include_once setup/master.simba}
+
+{$include_once player.simba}

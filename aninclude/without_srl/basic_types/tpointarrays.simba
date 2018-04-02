@@ -1,0 +1,4 @@
+function TPointArray.getBounds() : TBox;
+begin
+  result := getTPABounds(self);
+end;
